@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Control de Producción</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6">
+
+    <div class="w-full max-w-md flex flex-col gap-5">
+
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-2">
+            <div class="logo-icon w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-base font-bold" style="color: var(--text-primary)">Panel de Captura</h1>
+                <p class="text-xs uppercase tracking-widest" style="color: var(--text-muted)">Actualizar Indicadores</p>
+            </div>
+            <div class="ml-auto badge-online flex items-center gap-2 px-3 py-1.5 rounded-full">
+                <div class="pulse-dot"></div>
+                <span class="text-xs font-semibold">ACTIVO</span>
+            </div>
+        </div>
+
+        <!-- Formulario -->
+        <div class="card-glow p-6 flex flex-col gap-5">
+            <form id="formIndicadores" class="flex flex-col gap-5">
+
+                <div class="flex flex-col gap-2">
+                    <label class="label">Meta del Día</label>
+                    <input type="number" id="meta_dia" placeholder="Ej: 5000" required
+                        class="input-field rounded-xl px-4 py-3 text-sm w-full">
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="label">Cantidad Producida</label>
+                    <input type="number" id="producido" placeholder="Ej: 4200" required
+                        class="input-field rounded-xl px-4 py-3 text-sm w-full">
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="label">Estado de la Línea</label>
+                    <select id="estado_linea" class="input-field rounded-xl px-4 py-3 text-sm w-full">
+                        <option value="Operativo">Operativo</option>
+                        <option value="En Mantenimiento">En Mantenimiento</option>
+                        <option value="Detenido / Alerta">Detenido / Alerta</option>
+                    </select>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="label">Observaciones</label>
+                    <textarea id="observaciones" rows="3" placeholder="Novedades del turno..."
+                        class="input-field rounded-xl px-4 py-3 text-sm w-full resize-none"></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary text-white font-semibold py-3 rounded-xl text-sm tracking-wide">
+                    Guardar y Actualizar TV
+                </button>
+
+            </form>
+
+            <div id="mensaje" class="hidden text-center text-sm font-medium py-2 px-4 rounded-lg"></div>
+        </div>
+
+        <p class="text-center text-xs" style="color: var(--text-muted)">
+            Los datos se reflejan en tiempo real en la pantalla TV
+        </p>
+
+    </div>
+
+    <script>
+        fetch('/api/indicadores')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('meta_dia').value      = data.meta_dia || '';
+                document.getElementById('producido').value     = data.producido || '';
+                document.getElementById('estado_linea').value  = data.estado_linea || 'Operativo';
+                document.getElementById('observaciones').value = data.observaciones || '';
+            })
+            .catch(() => {});
+
+        document.getElementById('formIndicadores').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                meta_dia:      document.getElementById('meta_dia').value,
+                producido:     document.getElementById('producido').value,
+                estado_linea:  document.getElementById('estado_linea').value,
+                observaciones: document.getElementById('observaciones').value
+            };
+
+            const msg = document.getElementById('mensaje');
+            msg.className = 'hidden text-center text-sm font-medium py-2 px-4 rounded-lg';
+
+            try {
+                const res = await fetch('/api/indicadores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    msg.textContent = 'Datos actualizados correctamente en la TV';
+                    msg.classList.add('bg-emerald-500/10', 'text-emerald-400');
+                } else {
+                    msg.textContent = 'Error al actualizar los datos';
+                    msg.classList.add('bg-red-500/10', 'text-red-400');
+                }
+            } catch {
+                msg.textContent = 'Sin conexión con el servidor';
+                msg.classList.add('bg-red-500/10', 'text-red-400');
+            }
+
+            msg.classList.remove('hidden');
+            setTimeout(() => msg.classList.add('hidden'), 4000);
+        });
+    </script>
+</body>
+</html>

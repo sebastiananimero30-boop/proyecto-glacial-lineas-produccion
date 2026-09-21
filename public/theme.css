@@ -1,0 +1,417 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME.CSS — Variables de personalización del Dashboard TV
+   ═══════════════════════════════════════════════════════════
+   Modifica los valores de esta sección para cambiar colores,
+   fondos, tipografía y más sin tocar el HTML.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+
+    /* ── FONDO PRINCIPAL ─────────────────────────────────────
+       Color base del body. Puede ser un color sólido o dejarlo
+       y controlar solo los gradientes de abajo.               */
+    --bg-base:              #F8F6F3;     /* blanco hueso cálido */
+
+    /* Gradiente decorativo superior (detrás del header) */
+    --bg-glow-top-color:    rgba(124, 58, 237, 0.03);  /* violeta ultrasuave */
+    /* Gradiente decorativo inferior (esquina inferior derecha) */
+    --bg-glow-bottom-color: rgba(109, 40, 217, 0.02);  /* morado ultrasuave */
+
+    /* ── TARJETAS / PANELES ──────────────────────────────────*/
+    --card-bg:              rgba(255, 255, 255, 0.92);
+    --card-border:          rgba(124, 58, 237, 0.10);
+    --card-blur:            20px;
+    --card-radius:          1.5rem;
+    --card-radius-sm:       1rem;
+
+    /* ── TEXTO ───────────────────────────────────────────────*/
+    --text-primary:         #1C1917;     /* stone-900 — máximo contraste */
+    --text-secondary:       #57534E;     /* stone-600 */
+    --text-muted:           #78716C;     /* stone-500 */
+    --text-label:           #A8A29E;     /* stone-400 */
+
+    /* ── COLORES DE ACENTO (números y estadísticas) ──────────
+       Cada par define inicio y fin del gradiente del número.  */
+
+    /* Verde — cumplimiento / calidad */
+    --accent-green-from:    #10B981;
+    --accent-green-to:      #059669;
+
+    /* Azul — disponibilidad / producción */
+    --accent-blue-from:     #3B82F6;
+    --accent-blue-to:       #2563EB;
+
+    /* Ámbar — total general / paradas programadas */
+    --accent-amber-from:    #F59E0B;
+    --accent-amber-to:      #D97706;
+
+    /* Teal — Tetra Pak / desempeño */
+    --accent-teal-from:     #14B8A6;
+    --accent-teal-to:       #0D9488;
+
+    /* Rosa/rojo — paradas no programadas / alertas */
+    --accent-rose-from:     #F43F5E;
+    --accent-rose-to:       #E11D48;
+
+    /* Púrpura — OEE */
+    --accent-purple-from:   #A855F7;
+    --accent-purple-to:     #7C3AED;
+
+    /* Número neutro (stone oscuro) */
+    --accent-neutral-from:  #44403C;
+    --accent-neutral-to:    #78716C;
+
+    /* ── BARRA DE PROGRESO DE ROTACIÓN ──────────────────────*/
+    --progress-from:        #A855F7;
+    --progress-to:          #7C3AED;
+
+    /* ── BARRAS DE CUMPLIMIENTO (fill-bar) ──────────────────*/
+    --fillbar-from:         #A855F7;
+    --fillbar-to:           #10B981;
+    --fillbar-track:        rgba(0, 0, 0, 0.05);
+
+    /* ── DIVIDER (línea separadora) ─────────────────────────*/
+    --divider-color:        rgba(124, 58, 237, 0.08);
+
+    /* ── BADGE "EN LÍNEA" ────────────────────────────────────*/
+    --badge-online-bg:      rgba(16, 185, 129, 0.08);
+    --badge-online-border:  rgba(16, 185, 129, 0.2);
+    --badge-online-text:    #059669;
+    --badge-online-dot:     #10B981;
+
+    /* ── LOGO / ÍCONO DE MARCA ───────────────────────────────*/
+    --logo-bg:              linear-gradient(135deg, #A855F7, #7C3AED);
+
+    /* ── BOTÓN PRIMARIO (admin) ──────────────────────────────*/
+    --btn-from:             #A855F7;
+    --btn-to:               #7C3AED;
+    --btn-hover-from:       #9333EA;
+    --btn-hover-to:         #6D28D9;
+    --btn-glow:             rgba(168, 85, 247, 0.25);
+
+    /* ── INPUTS (admin) ──────────────────────────────────────*/
+    --input-bg:             rgba(255, 255, 255, 0.90);
+    --input-border:         rgba(0, 0, 0, 0.08);
+    --input-focus-border:   rgba(124, 58, 237, 0.4);
+    --input-focus-bg:       rgba(124, 58, 237, 0.02);
+    --input-placeholder:    rgba(0, 0, 0, 0.3);
+
+    /* ── TAGS DE PANEL ───────────────────────────────────────*/
+    --tag-p1-bg:            rgba(245, 158, 11, 0.08);
+    --tag-p1-color:         #D97706;
+    --tag-p1-border:        rgba(245, 158, 11, 0.15);
+
+    --tag-p2-bg:            rgba(20, 184, 166, 0.08);
+    --tag-p2-color:         #0D9488;
+    --tag-p2-border:        rgba(20, 184, 166, 0.15);
+
+    --tag-p3-bg:            rgba(249, 115, 22, 0.08);
+    --tag-p3-color:         #EA580C;
+    --tag-p3-border:        rgba(249, 115, 22, 0.15);
+
+    --tag-p4-bg:            rgba(168, 85, 247, 0.08);
+    --tag-p4-color:         #7C3AED;
+    --tag-p4-border:        rgba(168, 85, 247, 0.15);
+
+    /* tags de célula — Gran Cola (rojo) y Fruttsi (naranja tropical) */
+    --tag-c2-bg:            rgba(220, 38, 38, 0.08);
+    --tag-c2-color:         #DC2626;
+    --tag-c2-border:        rgba(220, 38, 38, 0.20);
+
+    --tag-c3-bg:            rgba(249, 115, 22, 0.10);
+    --tag-c3-color:         #EA580C;
+    --tag-c3-border:        rgba(249, 115, 22, 0.22);
+    --dot-inactive:         rgba(0, 0, 0, 0.12);
+    --dot-active:           #A855F7;
+    --dot-active-glow:      rgba(168, 85, 247, 0.3);
+
+    /* ── TIPOGRAFÍA ──────────────────────────────────────────*/
+    --font-family:          'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   CLASES GLOBALES — usan las variables de arriba
+   No hace falta modificar esta sección normalmente.
+   ═══════════════════════════════════════════════════════════ */
+
+* {
+    font-family: var(--font-family);
+}
+
+/* body background se define en tv.html / admin.html directamente */
+
+/* Tarjeta base */
+.card-glow {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(var(--card-blur));
+    border-radius: var(--card-radius);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 
+                0 4px 16px rgba(124, 58, 237, 0.04),
+                0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+.card-glow:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05), 
+                0 12px 28px rgba(124, 58, 237, 0.08),
+                0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+    transform: translateY(-2px) scale(1.002);
+    border-color: rgba(124, 58, 237, 0.15);
+}
+
+/* Divider */
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--divider-color), transparent);
+}
+
+/* Barras de cumplimiento */
+.fill-bar-track {
+    height: 5px;
+    background: var(--fillbar-track);
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) inset;
+}
+.fill-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--fillbar-from), var(--fillbar-to));
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+    position: relative;
+}
+.fill-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Barra de progreso de rotación */
+.progress-bar {
+    height: 2px;
+    background: linear-gradient(90deg, var(--progress-from), var(--progress-to));
+    animation: progress 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    transform-origin: left;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+@keyframes progress {
+    from { width: 0%; opacity: 1; }
+    95%  { opacity: 1; }
+    to   { width: 100%; opacity: 0; }
+}
+
+/* Números con gradiente */
+.stat-number {
+    background: linear-gradient(135deg, var(--accent-neutral-from), var(--accent-neutral-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.stat-green {
+    background: linear-gradient(135deg, var(--accent-green-from), var(--accent-green-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+.stat-blue {
+    background: linear-gradient(135deg, var(--accent-blue-from), var(--accent-blue-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.stat-amber {
+    background: linear-gradient(135deg, var(--accent-amber-from), var(--accent-amber-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.stat-teal {
+    background: linear-gradient(135deg, var(--accent-teal-from), var(--accent-teal-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.stat-rose {
+    background: linear-gradient(135deg, var(--accent-rose-from), var(--accent-rose-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.stat-purple {
+    background: linear-gradient(135deg, var(--accent-purple-from), var(--accent-purple-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+/* sombra para legibilidad sobre foto */
+.stat-number, .stat-green, .stat-blue, .stat-amber,
+.stat-teal,   .stat-rose,  .stat-purple {
+    filter: none;
+}
+
+/* Badge EN LÍNEA */
+.badge-online {
+    background: var(--badge-online-bg);
+    border: 1px solid var(--badge-online-border);
+    color: var(--badge-online-text);
+    transition: all 0.3s ease;
+}
+.badge-online:hover {
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+.pulse-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--badge-online-dot);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); 
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); 
+        transform: scale(1.05);
+    }
+}
+
+/* Dots de navegación */
+.dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--dot-inactive);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+.dot:hover {
+    background: rgba(168, 85, 247, 0.3);
+    transform: scale(1.15);
+}
+.dot.active {
+    background: var(--dot-active);
+    box-shadow: 0 0 10px var(--dot-active-glow);
+    width: 24px;
+    border-radius: 4px;
+}
+
+/* Tags de panel */
+.tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 24px;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.tag-p1 { background: var(--tag-p1-bg); color: var(--tag-p1-color); border: 1px solid var(--tag-p1-border); }
+.tag-p2 { background: var(--tag-p2-bg); color: var(--tag-p2-color); border: 1px solid var(--tag-p2-border); }
+.tag-p3 { background: var(--tag-p3-bg); color: var(--tag-p3-color); border: 1px solid var(--tag-p3-border); }
+.tag-p4 { background: var(--tag-p4-bg); color: var(--tag-p4-color); border: 1px solid var(--tag-p4-border); }
+
+/* ── Logo ───────────────────────────────────────────────── */
+.logo-icon { 
+    background: var(--logo-bg);
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2),
+                0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+    transition: all 0.3s ease;
+}
+.logo-icon:hover {
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+    transform: translateY(-1px) rotate(2deg);
+}
+
+/* Slide oculto/visible — animación en tv.html */
+.slide { display: none; }
+.slide.active { display: flex; }
+/* ── ADMIN: inputs ───────────────────────────────────────── */
+.input-field {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.input-field:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    background: var(--input-focus-bg);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+.input-field::placeholder { color: var(--input-placeholder); }
+select.input-field option  { background: #FEFCFB; color: var(--text-primary); }
+
+/* ── ADMIN: botón primario ───────────────────────────────── */
+.btn-primary {
+    background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(168, 85, 247, 0.15);
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--btn-hover-from), var(--btn-hover-to));
+    box-shadow: 0 4px 12px var(--btn-glow), 0 2px 4px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+.btn-primary:active { 
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(168, 85, 247, 0.2);
+}
+
+/* ── Label pequeño ───────────────────────────────────────── */
+.label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-label);
+}
+
+/* animación de entrada — definida en tv.html */
+
+/* ── Mejoras de contraste ───────────────────────────────── */
+.card-glow > * {
+    position: relative;
+    z-index: 1;
+}

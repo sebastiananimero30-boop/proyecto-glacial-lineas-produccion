@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero TV - Control de Producción</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           LAYOUT RAÍZ — siempre exactamente la ventana, sin scroll
+        ═══════════════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            width: 100%; height: 100%;
+            margin: 0; padding: 0;
+            overflow: hidden;           /* nunca scrollbar */
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            padding: clamp(8px, 1.2vh, 20px) clamp(10px, 1.5vw, 28px);
+            gap:     clamp(4px, 0.8vh, 14px);
+            background-color: var(--bg-base);
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -20%, var(--bg-glow-top-color), transparent),
+                radial-gradient(ellipse 50% 30% at 80% 80%, var(--bg-glow-bottom-color), transparent);
+        }
+
+        /* ── Tipografía fluida — escala entre pantalla chica y 4K ── */
+        :root {
+            --t-label:  clamp(8px,  0.8vw,  11px);
+            --t-small:  clamp(10px, 0.9vw,  13px);
+            --t-body:   clamp(12px, 1.1vw,  16px);
+            --t-stat:   clamp(20px, 2.8vw,  42px);
+            --t-hero:   clamp(28px, 4.2vw,  64px);
+            --t-title:  clamp(14px, 1.6vw,  24px);
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        .tv-header {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ── Barra progreso ──────────────────────────────────── */
+        .tv-progress {
+            flex: 0 0 2px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        /* ── Slides: ocupan todo el espacio restante ─────────── */
+        .slide       { display: none; flex: 1 1 0; min-height: 0; flex-direction: column; gap: clamp(4px, 0.8vh, 12px); }
+        .slide.active{ display: flex; }
+
+        /* ── Footer ─────────────────────────────────────────── */
+        .tv-footer {
+            flex: 0 0 auto;
+        }
+
+        /* ── Panel grid: 3 columnas de igual alto ─────────────── */
+        .panel-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: clamp(6px, 1vw, 20px);
+            flex: 1 1 0;
+            min-height: 0;
+        }
+
+        /* ── Card célula ─────────────────────────────────────── */
+        .celula-card {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(4px, 0.6vh, 10px);
+            padding: clamp(10px, 1.2vw, 24px);
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .celula-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex: 0 0 auto;
+        }
+
+        /* body de la card: stats izq + botella der */
+        .celula-card__body {
+            display: flex;
+            gap: clamp(6px, 1vw, 16px);
+            flex: 1 1 0;
+            min-height: 0;
+            align-items: stretch;
+        }
+
+        .celula-card__stats {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex: 1 1 0;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .celula-card__bottle-wrap {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Botella ocupa un % del ancho de la card, no desborda el alto */
+            width: clamp(48px, 8vw, 130px);
+        }
+
+        /* ── Tipografía dentro de cards ──────────────────────── */
+        .lbl  { font-size: var(--t-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-label); }
+        .stat-hero { font-size: var(--t-hero); font-weight: 900; line-height: 1; letter-spacing: -0.03em; }
+        .stat-med  { font-size: var(--t-stat); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+        .card-title{ font-size: var(--t-title); font-weight: 900; line-height: 1.1; letter-spacing: -0.01em; color: var(--text-primary); }
+
+        /* ═══════════════════════════════════════════════════════
+           BOTTLE — geometría calibrada sobre botella.jpg 360×1024
+             · botella empieza y=10.8%  → tope
+             · cuerpo ancho    y=26.8%  → tope práctico de llenado
+             · base             y=98.5% → fondo
+        ═══════════════════════════════════════════════════════ */
+        .bottle {
+            position: relative;
+            width: 100%;            /* ancho = el de su wrapper */
+            aspect-ratio: 360/1024; /* alto se deriva solo */
+            max-height: 100%;       /* nunca desborda su contenedor */
+            --nivel:  0;
+            --b-fondo: 98.5%;
+            --b-tope:  27%;
+            flex-shrink: 0;
+            filter:
+                drop-shadow(0 6px 18px rgba(109,40,217,0.35))
+                drop-shadow(0 2px 5px  rgba(0,0,0,0.15));
+        }
+
+        .bottle-mask {
+            position: absolute; inset: 0; overflow: hidden;
+            -webkit-mask: url(/bottle_mask.png) center/100% 100% no-repeat;
+                    mask: url(/bottle_mask.png) center/100% 100% no-repeat;
+            -webkit-mask-mode: alpha;
+                    mask-mode: alpha;
+        }
+
+        .bottle-liquid {
+            position: absolute;
+            left: -60%; right: -60%; bottom: 0;
+            top: calc(var(--b-fondo) - (var(--b-fondo) - var(--b-tope)) * var(--nivel));
+            background: linear-gradient(180deg,
+                #c084fc 0%, #9333ea 12%, #7e22ce 40%,
+                #6b21a8 70%, #4c1d95 90%, #3b0764 100%);
+            transition: top 1.4s cubic-bezier(0.25,0.46,0.45,0.94);
+        }
+
+        .bottle-wave-1 {
+            position: absolute; left: 0; width: 200%; height: 22%;
+            bottom: 100%; fill: #a855f7; opacity: 0.95;
+            animation: wave-scroll 2.6s linear infinite;
+            will-change: transform;
+        }
+        .bottle-wave-2 {
+            position: absolute; left: 0; width: 200%; height: 18%;
+            bottom: 100%; fill: #7e22ce; opacity: 0.6;
+            animation: wave-scroll 3.8s linear infinite reverse;
+            will-change: transform;
+        }
+        @keyframes wave-scroll {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-50%); }
+        }
+
+        .bottle-glass-overlay {
+            position: absolute; inset: 0; pointer-events: none; z-index: 3;
+            background:
+                linear-gradient(100deg,
+                    transparent 18%, rgba(255,255,255,0.13) 22%,
+                    rgba(255,255,255,0.22) 24%, rgba(255,255,255,0.10) 26%, transparent 30%),
+                linear-gradient(80deg,
+                    transparent 68%, rgba(255,255,255,0.06) 72%,
+                    rgba(255,255,255,0.10) 74%, transparent 78%);
+        }
+        .bottle-glass-img {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: fill; mix-blend-mode: multiply; opacity: 0.55;
+            z-index: 4; pointer-events: none;
+        }
+        .bottle-meniscus {
+            position: absolute; left: 5%; right: 5%; height: 3px;
+            border-radius: 50%; bottom: 100%; margin-bottom: -1px;
+            background: linear-gradient(90deg,
+                transparent 0%, rgba(255,255,255,0.5) 30%,
+                rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.5) 70%, transparent 100%);
+            pointer-events: none; opacity: 0.8;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bottle-wave-1, .bottle-wave-2 { animation: none; }
+            .bottle-liquid { transition: none; }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           TETRA — mismo sistema de llenado, ratio 272×714
+           La imagen ya tiene alpha → se usa como máscara directa
+        ═══════════════════════════════════════════════════════ */
+        .tetra {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 272 / 714;
+            max-height: 100%;
+            --nivel: 0;
+            --b-fondo: 96%;
+            --b-tope:  12%;
+            flex-shrink: 0;
+            filter:
+                drop-shadow(0 8px 22px rgba(20, 184, 166, 0.30))
+                drop-shadow(0 2px 6px rgba(0,0,0,0.18));
+        }
+
+        .tetra-mask {
+            position: absolute; inset: 0; overflow: hidden;
+            -webkit-mask: url(/fruttsy_trop_1-2.png) center/100% 100% no-repeat;
+                    mask: url(/fruttsy_trop_1-2.png) center/100% 100% no-repeat;
+            -webkit-mask-mode: alpha;
+                    mask-mode: alpha;
+        }
+
+        /* ── Líquido Gran Cola — rojo oscuro ─────────────── */
+        .bottle-liquid--cola {
+            background: linear-gradient(180deg,
+                #fca5a5 0%, #dc2626 12%,
+                #b91c1c 40%, #7f1d1d 75%, #450a0a 100%);
+        }
+
+        /* ── Líquido Fruttsi Tropical — naranja ─────────── */
+        .tetra-liquid {
+            position: absolute;
+            left: -60%; right: -60%; bottom: 0;
+            top: calc(var(--b-fondo) - (var(--b-fondo) - var(--b-tope)) * var(--nivel));
+            background: linear-gradient(180deg,
+                #fed7aa 0%, #f97316 12%,
+                #ea580c 40%, #c2410c 75%, #7c2d12 100%);
+            transition: top 1.4s cubic-bezier(0.25,0.46,0.45,0.94);
+        }
+
+        /* reutiliza las olas y el menisco de .bottle */
+        .tetra-img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: fill;
+            mix-blend-mode: multiply;
+            opacity: 0.50;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        /* ── Animación de entrada del slide ─────────────────── */
+        .slide.active { animation: fadeUp 0.45s cubic-bezier(0.4,0,0.2,1); }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ══════════════ HEADER ══════════════ -->
+    <header class="tv-header">
+        <div class="flex items-center" style="gap: clamp(6px,1vw,16px)">
+            <div class="logo-icon rounded-xl flex items-center justify-center flex-shrink-0"
+                 style="width:clamp(28px,2.5vw,44px); height:clamp(28px,2.5vw,44px)">
+                <svg style="width:clamp(14px,1.2vw,22px);height:clamp(14px,1.2vw,22px)"
+                     viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-size:var(--t-body); font-weight:800; letter-spacing:-0.01em; color:var(--text-primary); line-height:1.2; margin:0">
+                    CONTROL DE PRODUCCIÓN
+                </h1>
+                <p style="font-size:var(--t-label); font-weight:600; letter-spacing:0.1em; color:var(--text-muted); margin:0; text-transform:uppercase">
+                    Monitoreo en Tiempo Real
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center" style="gap: clamp(8px,1vw,18px)">
+            <!-- Dots navegación -->
+            <div class="flex items-center" style="gap:6px" id="navDots">
+                <div class="dot active" id="dot1"></div>
+                <div class="dot" id="dot2"></div>
+                <div class="dot" id="dot3"></div>
+                <div class="dot" id="dot4"></div>
+            </div>
+
+            <div style="width:1px;height:20px;background:var(--divider-color)"></div>
+
+            <!-- Reloj -->
+            <div class="text-right">
+                <div id="reloj" style="font-size:var(--t-body);font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;font-variant-numeric:tabular-nums"></div>
+                <div id="fecha" style="font-size:var(--t-label);font-weight:500;color:var(--text-muted)"></div>
+            </div>
+
+            <!-- Badge EN LÍNEA -->
+            <div class="badge-online flex items-center rounded-full" style="gap:6px;padding:clamp(4px,0.5vh,8px) clamp(8px,1vw,16px)">
+                <div class="pulse-dot"></div>
+                <span style="font-size:var(--t-label);font-weight:700;letter-spacing:0.1em">EN LÍNEA</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Barra de progreso de rotación -->
+    <div class="tv-progress">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- ══════════════ PANEL 1: CÉLULAS PET ══════════════ -->
+    <main id="banner1" class="slide active">
+
+        <!-- Sub-header del panel -->
+        <div class="flex items-center" style="gap:clamp(6px,0.8vw,14px); flex:0 0 auto">
+            <span class="tag tag-p1">Panel 01</span>
+            <span style="font-size:var(--t-small);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)">
+                Indicadores Célula / PET
+            </span>
+            <div class="flex-1 divider"></div>
+        </div>
+
+        <div class="panel-grid">
+
+            <!-- CÉLULA 1 -->
+            <div class="card-glow celula-card">
+                <div class="celula-card__header">
+                    <div>
+                        <p class="lbl" style="margin-bottom:2px">Línea</p>
+                        <h2 id="c1Nombre" class="card-title">CÉLULA 1</h2>
+                    </div>
+                    <span class="tag tag-p1">PET</span>
+                </div>
+                <div class="divider" style="flex:0 0 auto"></div>
+                <div class="celula-card__body">
+                    <div class="celula-card__stats">
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Cumplimiento</p>
+                            <span id="c1Cumplimiento" class="stat-hero stat-green">0%</span>
+                        </div>
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Real</p>
+                            <span id="c1Producido" class="stat-med stat-number">0</span>
+                        </div>
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Estimado</p>
+                            <span id="c1Estimado" class="stat-med" style="color:var(--text-muted);font-weight:700">0</span>
+                        </div>
+                    </div>
+                    <div class="celula-card__bottle-wrap">
+                        <div class="bottle" id="bottle1">
+                            <div class="bottle-mask">
+                                <div class="bottle-liquid" id="c1Liquid">
+                                    <svg class="bottle-wave-1" viewBox="0 0 200 20" preserveAspectRatio="none">
+                                        <path d="M0,10 C25,2 50,18 75,10 C100,2 125,18 150,10 C175,2 200,18 200,10 L200,20 L0,20 Z"/>
+                                    </svg>
+                                    <svg class="bottle-wave-2" viewBox="0 0 200 20" preserveAspectRatio="none">
+                                        <path d="M0,12 C30,4 60,20 90,12 C120,4 150,20 180,12 C195,6 200,14 200,12 L200,20 L0,20 Z"/>
+                                    </svg>
+                                    <div class="bottle-meniscus"></div>
+                                </div>
+                            </div>
+                            <div class="bottle-glass-overlay"></div>
+                            <img class="bottle-glass-img" src="/botella.jpg" alt="">
+                        </div>
+                    </div>
+                </div>
+                <div style="display:none"><div class="fill-bar" id="c1Bar" style="width:0%"></div></div>
+            </div>
+
+            <!-- CÉLULA 2 -->
+            <div class="card-glow celula-card">
+                <div class="celula-card__header">
+                    <div>
+                        <p class="lbl" style="margin-bottom:2px">Línea</p>
+                        <h2 id="c2Nombre" class="card-title">CÉLULA 2</h2>
+                    </div>
+                    <span class="tag tag-c2">Gran Cola</span>
+                </div>
+                <div class="divider" style="flex:0 0 auto"></div>
+                <div class="celula-card__body">
+                    <div class="celula-card__stats">
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Cumplimiento</p>
+                            <span id="c2Cumplimiento" class="stat-hero stat-green">0%</span>
+                        </div>
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Real</p>
+                            <span id="c2Producido" class="stat-med stat-number">0</span>
+                        </div>
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Estimado</p>
+                            <span id="c2Estimado" class="stat-med" style="color:var(--text-muted);font-weight:700">0</span>
+                        </div>
+                    </div>
+                    <div class="celula-card__bottle-wrap">
+                        <div class="bottle" id="bottle2" style="aspect-ratio:745/2112">
+                            <div class="bottle-mask" style="-webkit-mask-image:url(/gran_cola_mask.png);mask-image:url(/gran_cola_mask.png)">
+                                <div class="bottle-liquid bottle-liquid--cola" id="c2Liquid">
+                                    <svg class="bottle-wave-1" viewBox="0 0 200 20" preserveAspectRatio="none"
+                                         style="animation-duration:3.1s;animation-delay:-1.3s;fill:#dc2626">
+                                        <path d="M0,10 C25,2 50,18 75,10 C100,2 125,18 150,10 C175,2 200,18 200,10 L200,20 L0,20 Z"/>
+                                    </svg>
+                                    <svg class="bottle-wave-2" viewBox="0 0 200 20" preserveAspectRatio="none"
+                                         style="animation-duration:4.4s;animation-delay:-0.7s;fill:#991b1b">
+                                        <path d="M0,12 C30,4 60,20 90,12 C120,4 150,20 180,12 C195,6 200,14 200,12 L200,20 L0,20 Z"/>
+                                    </svg>
+                                    <div class="bottle-meniscus"></div>
+                                </div>
+                            </div>
+                            <div class="bottle-glass-overlay"></div>
+                            <img class="bottle-glass-img" src="/gran cola.png" alt="Gran Cola" style="aspect-ratio:745/2112">
+                        </div>
+                    </div>
+                </div>
+                <div style="display:none"><div class="fill-bar" id="c2Bar" style="width:0%"></div></div>
+            </div>
+
+            <!-- CÉLULA 3 -->
+            <div class="card-glow celula-card">
+                <div class="celula-card__header">
+                    <div>
+                        <p class="lbl" style="margin-bottom:2px">Línea</p>
+                        <h2 id="c3Nombre" class="card-title">CÉLULA 3</h2>
+                    </div>
+                    <span class="tag tag-c3">Fruttsi</span>
+                </div>
+                <div class="divider" style="flex:0 0 auto"></div>
+                <div class="celula-card__body">
+                    <div class="celula-card__stats">
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Cumplimiento</p>
+                            <span id="c3Cumplimiento" class="stat-hero stat-green">0%</span>
+                        </div>
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Real</p>
+                            <span id="c3Producido" class="stat-med stat-number">0</span>
+                        </div>
+                        <div>
+                            <p class="lbl" style="margin-bottom:2px">Estimado</p>
+                            <span id="c3Estimado" class="stat-med" style="color:var(--text-muted);font-weight:700">0</span>
+                        </div>
+                    </div>
+                    <!-- Fruttsi Tetra animado -->
+                    <div class="celula-card__bottle-wrap">
+                        <div class="tetra" id="bottle3">
+                            <div class="tetra-mask">
+                                <div class="tetra-liquid" id="c3Liquid">
+                                    <svg class="bottle-wave-1" viewBox="0 0 200 20" preserveAspectRatio="none"
+                                         style="animation-duration:2.2s;animation-delay:-2.1s;fill:#f97316">
+                                        <path d="M0,10 C25,2 50,18 75,10 C100,2 125,18 150,10 C175,2 200,18 200,10 L200,20 L0,20 Z"/>
+                                    </svg>
+                                    <svg class="bottle-wave-2" viewBox="0 0 200 20" preserveAspectRatio="none"
+                                         style="animation-duration:3.3s;animation-delay:-1.5s;fill:#c2410c">
+                                        <path d="M0,12 C30,4 60,20 90,12 C120,4 150,20 180,12 C195,6 200,14 200,12 L200,20 L0,20 Z"/>
+                                    </svg>
+                                    <div class="bottle-meniscus"></div>
+                                </div>
+                            </div>
+                            <img class="tetra-img" src="/fruttsy_trop_1-2.png" alt="Fruttsi">
+                        </div>
+                    </div>
+                </div>
+                <div style="display:none"><div class="fill-bar" id="c3Bar" style="width:0%"></div></div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ══════════════ PANEL 2: TETRA PAK ══════════════ -->
+    <main id="banner2" class="slide">
+        <div class="flex items-center" style="gap:clamp(6px,0.8vw,14px);flex:0 0 auto">
+            <span class="tag tag-p2">Panel 02</span>
+            <span style="font-size:var(--t-small);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)">Línea Tetra Pak — Fruttsi</span>
+            <div class="flex-1 divider"></div>
+        </div>
+
+        <!-- layout: tetra grande izq + métricas der -->
+        <div class="flex-1 flex min-h-0" style="gap:clamp(10px,1.5vw,28px)">
+
+            <!-- TETRA animado -->
+            <div class="card-glow flex items-center justify-center" style="flex:0 0 auto; width:clamp(120px,14vw,220px); padding:clamp(10px,1.5vw,24px);">
+                <div class="tetra" id="tetra1">
+                    <div class="tetra-mask">
+                        <div class="tetra-liquid" id="t1Liquid">
+                            <svg class="bottle-wave-1" viewBox="0 0 200 20" preserveAspectRatio="none">
+                                <path d="M0,10 C25,2 50,18 75,10 C100,2 125,18 150,10 C175,2 200,18 200,10 L200,20 L0,20 Z"/>
+                            </svg>
+                            <svg class="bottle-wave-2" viewBox="0 0 200 20" preserveAspectRatio="none"
+                                 style="animation-duration:3.5s;animation-delay:-1.8s">
+                                <path d="M0,12 C30,4 60,20 90,12 C120,4 150,20 180,12 C195,6 200,14 200,12 L200,20 L0,20 Z"/>
+                            </svg>
+                            <div class="bottle-meniscus"></div>
+                        </div>
+                    </div>
+                    <!-- imagen del tetra encima -->
+                    <img class="tetra-img" src="/fruttsy_trop_1-2.png" alt="Fruttsi Tetra">
+                </div>
+            </div>
+
+            <!-- métricas derecha -->
+            <div class="flex-1 flex flex-col min-h-0" style="gap:clamp(8px,1vw,18px)">
+
+                <!-- header -->
+                <div class="card-glow flex justify-between items-center" style="flex:0 0 auto; padding:clamp(10px,1.2vw,22px) clamp(14px,1.8vw,28px)">
+                    <div>
+                        <p class="lbl" style="margin-bottom:3px">Unidad de Envasado</p>
+                        <h2 class="card-title" style="font-size:clamp(16px,2.2vw,36px)">LÍNEA TETRA PAK</h2>
+                    </div>
+                    <span class="tag tag-p2">Envasado</span>
+                </div>
+
+                <!-- 3 métricas -->
+                <div class="grid grid-cols-3 flex-1 min-h-0" style="gap:clamp(8px,1vw,18px)">
+                    <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(12px,1.5vw,28px)">
+                        <p class="lbl">Producción Real</p>
+                        <span id="t1Producido" class="stat-hero stat-teal">--</span>
+                        <p style="font-size:var(--t-label);color:var(--text-muted);font-weight:600">unidades</p>
+                    </div>
+                    <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(12px,1.5vw,28px)">
+                        <p class="lbl">Estimado Línea</p>
+                        <span id="t1Estimado" class="stat-hero stat-number">--</span>
+                        <p style="font-size:var(--t-label);color:var(--text-muted);font-weight:600">unidades</p>
+                    </div>
+                    <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(12px,1.5vw,28px)">
+                        <p class="lbl">% Cumplimiento</p>
+                        <span id="t1Cumplimiento" class="stat-hero stat-green">--%</span>
+                        <div class="fill-bar-track" style="margin-top:auto;padding-top:8px">
+                            <div class="fill-bar" id="t1Bar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ══════════════ PANEL 3: MANTENIMIENTO ══════════════ -->
+    <main id="banner3" class="slide">
+        <div class="flex items-center" style="gap:clamp(6px,0.8vw,14px);flex:0 0 auto">
+            <span class="tag tag-p3">Panel 03</span>
+            <span style="font-size:var(--t-small);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)">Estado de Mantenimiento</span>
+            <div class="flex-1 divider"></div>
+        </div>
+
+        <div class="card-glow flex-1 flex flex-col" style="padding:clamp(14px,2vw,32px);gap:clamp(8px,1.5vh,24px);min-height:0">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="lbl" style="margin-bottom:4px">Monitoreo</p>
+                    <h2 class="card-title" style="font-size:clamp(16px,2.2vw,36px)">PARADAS Y EQUIPOS</h2>
+                </div>
+                <span class="tag tag-p3">Mantenimiento</span>
+            </div>
+            <div class="divider"></div>
+            <div class="grid grid-cols-3 flex-1 min-h-0" style="gap:clamp(8px,1vw,20px)">
+                <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(10px,1.5vw,28px)">
+                    <p class="lbl">Paradas Programadas</p>
+                    <span class="stat-hero stat-amber">0</span>
+                    <p style="font-size:var(--t-label);color:var(--text-muted);font-weight:600">eventos registrados</p>
+                </div>
+                <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(10px,1.5vw,28px)">
+                    <p class="lbl">Paradas No Programadas</p>
+                    <span class="stat-hero stat-rose">0</span>
+                    <p style="font-size:var(--t-label);color:var(--text-muted);font-weight:600">eventos registrados</p>
+                </div>
+                <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(10px,1.5vw,28px)">
+                    <p class="lbl">Tiempo Operativo (MTBF)</p>
+                    <span class="stat-hero stat-blue">98.5%</span>
+                    <div class="fill-bar-track">
+                        <div class="fill-bar" style="width:98.5%;background:linear-gradient(90deg,var(--accent-blue-to),var(--accent-blue-from))"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══════════════ PANEL 4: OEE ══════════════ -->
+    <main id="banner4" class="slide">
+        <div class="flex items-center" style="gap:clamp(6px,0.8vw,14px);flex:0 0 auto">
+            <span class="tag tag-p4">Panel 04</span>
+            <span style="font-size:var(--t-small);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)">Eficiencia Global — OEE</span>
+            <div class="flex-1 divider"></div>
+        </div>
+
+        <div class="card-glow flex-1 flex flex-col" style="padding:clamp(14px,2vw,32px);gap:clamp(8px,1.5vh,24px);min-height:0">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="lbl" style="margin-bottom:4px">Métricas de Planta</p>
+                    <h2 class="card-title" style="font-size:clamp(16px,2.2vw,36px)">RENDIMIENTO GLOBAL</h2>
+                </div>
+                <span class="tag tag-p4">OEE</span>
+            </div>
+            <div class="divider"></div>
+            <div class="grid grid-cols-3 flex-1 min-h-0" style="gap:clamp(8px,1vw,20px)">
+                <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(10px,1.5vw,28px)">
+                    <p class="lbl">Disponibilidad</p>
+                    <span class="stat-hero stat-blue">92.0%</span>
+                    <div class="fill-bar-track">
+                        <div class="fill-bar" style="width:92%;background:linear-gradient(90deg,var(--accent-blue-to),var(--accent-blue-from))"></div>
+                    </div>
+                </div>
+                <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(10px,1.5vw,28px)">
+                    <p class="lbl">Desempeño</p>
+                    <span class="stat-hero stat-teal">88.5%</span>
+                    <div class="fill-bar-track">
+                        <div class="fill-bar" style="width:88.5%;background:linear-gradient(90deg,var(--accent-teal-to),var(--accent-teal-from))"></div>
+                    </div>
+                </div>
+                <div class="card-glow flex flex-col justify-between" style="border-radius:var(--card-radius-sm);padding:clamp(10px,1.5vw,28px)">
+                    <p class="lbl">Calidad</p>
+                    <span class="stat-hero stat-green">99.1%</span>
+                    <div class="fill-bar-track">
+                        <div class="fill-bar" style="width:99.1%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══════════════ FOOTER ══════════════ -->
+    <footer class="tv-footer card-glow flex justify-between items-center"
+            style="padding:clamp(6px,0.8vh,14px) clamp(12px,1.5vw,28px); gap:clamp(8px,1vw,24px)">
+        <div>
+            <p class="lbl" style="margin-bottom:2px">Cumplimiento Total General</p>
+            <span id="totalCumplimiento" class="stat-hero stat-amber">0%</span>
+        </div>
+
+        <div style="width:1px;height:clamp(28px,3vh,48px);background:var(--divider-color)"></div>
+
+        <div class="flex" style="gap:clamp(12px,2vw,40px)">
+            <div>
+                <p class="lbl" style="margin-bottom:2px">Producción Real Total</p>
+                <span id="totalProducido" class="stat-med stat-number">0</span>
+            </div>
+            <div>
+                <p class="lbl" style="margin-bottom:2px">Estimado Total General</p>
+                <span id="totalEstimado" class="stat-med" style="color:var(--text-muted);font-weight:700">0</span>
+            </div>
+        </div>
+
+        <div style="width:1px;height:clamp(28px,3vh,48px);background:var(--divider-color)"></div>
+
+        <div class="text-right">
+            <p class="lbl" style="margin-bottom:2px">Turno Activo</p>
+            <span id="turnoActual" class="stat-small stat-blue" style="font-size:var(--t-small);font-weight:700">--</span>
+        </div>
+    </footer>
+
+    <!-- ══════════════ SCRIPTS ══════════════ -->
+    <script>
+        const socket = io();
+
+        /* ── Reloj ── */
+        function actualizarReloj() {
+            const ahora = new Date();
+            document.getElementById('reloj').textContent =
+                ahora.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            document.getElementById('fecha').textContent =
+                ahora.toLocaleDateString('es-CO', { weekday:'short', day:'2-digit', month:'short' }).toUpperCase();
+            const h = ahora.getHours();
+            document.getElementById('turnoActual').textContent =
+                h >= 6 && h < 14 ? 'TURNO MAÑANA' : h >= 14 && h < 22 ? 'TURNO TARDE' : 'TURNO NOCHE';
+        }
+        actualizarReloj();
+        setInterval(actualizarReloj, 1000);
+
+        /* ── Botellas ── */
+        actualizarBotella(1, 0);
+        actualizarBotella(2, 0);
+        actualizarBotella(3, 0);
+
+        function fmt(n) { return Number(n||0).toLocaleString('es-CO'); }
+        function pct(s) { return parseFloat(String(s).replace('%','')) || 0; }
+
+        function actualizarBotella(n, pctValue) {
+            const nivel = Math.min(Math.max(pctValue / 100, 0), 1);
+            const b = document.getElementById(`bottle${n}`);
+            if (b) b.style.setProperty('--nivel', nivel);
+        }
+
+        /* ── Socket ── */
+        socket.on('actualizar_indicadores', (d) => {
+            if (!d) return;
+
+            document.getElementById('c1Nombre').textContent      = d.celula1.nombre || 'CÉLULA 1';
+            document.getElementById('c1Cumplimiento').textContent = d.celula1.cumplimiento_fecha;
+            document.getElementById('c1Producido').textContent    = fmt(d.celula1.producido);
+            document.getElementById('c1Estimado').textContent     = fmt(d.celula1.estimado);
+            document.getElementById('c1Bar').style.width          = Math.min(pct(d.celula1.cumplimiento_fecha),100) + '%';
+            actualizarBotella(1, pct(d.celula1.cumplimiento_fecha));
+
+            document.getElementById('c2Nombre').textContent      = d.celula2.nombre || 'CÉLULA 2';
+            document.getElementById('c2Cumplimiento').textContent = d.celula2.cumplimiento_fecha;
+            document.getElementById('c2Producido').textContent    = fmt(d.celula2.producido);
+            document.getElementById('c2Estimado').textContent     = fmt(d.celula2.estimado);
+            document.getElementById('c2Bar').style.width          = Math.min(pct(d.celula2.cumplimiento_fecha),100) + '%';
+            actualizarBotella(2, pct(d.celula2.cumplimiento_fecha));
+
+            document.getElementById('c3Nombre').textContent      = d.celula3.nombre || 'CÉLULA 3';
+            document.getElementById('c3Cumplimiento').textContent = d.celula3.cumplimiento_fecha;
+            document.getElementById('c3Producido').textContent    = fmt(d.celula3.producido);
+            document.getElementById('c3Estimado').textContent     = fmt(d.celula3.estimado);
+            document.getElementById('c3Bar').style.width          = Math.min(pct(d.celula3.cumplimiento_fecha),100) + '%';
+            actualizarBotella(3, pct(d.celula3.cumplimiento_fecha));
+
+            // ── Panel 2: Tetra (usa datos célula 3) ──
+            const pctTetra = pct(d.celula3.cumplimiento_fecha);
+            document.getElementById('t1Producido').textContent    = fmt(d.celula3.producido);
+            document.getElementById('t1Estimado').textContent     = fmt(d.celula3.estimado);
+            document.getElementById('t1Cumplimiento').textContent = d.celula3.cumplimiento_fecha;
+            document.getElementById('t1Bar').style.width          = Math.min(pctTetra, 100) + '%';
+            // llenar el tetra
+            const nivel = Math.min(Math.max(pctTetra / 100, 0), 1);
+            const tetra = document.getElementById('tetra1');
+            if (tetra) tetra.style.setProperty('--nivel', nivel);
+
+            document.getElementById('totalCumplimiento').textContent = d.total.cumplimiento_fecha;
+            document.getElementById('totalProducido').textContent     = fmt(d.total.producido);
+            document.getElementById('totalEstimado').textContent      = fmt(d.total.estimado);
+        });
+
+        /* ── Rotación de slides ── */
+        let slideActual = 1;
+        const totalSlides = 4;
+        const TIEMPO_MS = 20000;
+
+        function cambiarPantalla() {
+            document.getElementById(`banner${slideActual}`).classList.remove('active');
+            document.getElementById(`dot${slideActual}`).classList.remove('active');
+            slideActual = slideActual >= totalSlides ? 1 : slideActual + 1;
+            document.getElementById(`banner${slideActual}`).classList.add('active');
+            document.getElementById(`dot${slideActual}`).classList.add('active');
+            const bar = document.getElementById('progressBar');
+            bar.style.animation = 'none';
+            void bar.offsetHeight;
+            bar.style.animation = 'progress 10s linear infinite';
+        }
+        setInterval(cambiarPantalla, TIEMPO_MS);
+    </script>
+</body>
+</html>
