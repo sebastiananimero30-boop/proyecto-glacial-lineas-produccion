@@ -194,6 +194,10 @@
         .bottle-glass-img {
             position: absolute; inset: 0; width: 100%; height: 100%;
             object-fit: fill;
+            /* El vidrio se mezcla con el líquido: conserva etiqueta y reflejos
+               sin tapar el color de llenado que está debajo. */
+            mix-blend-mode: multiply;
+            opacity: 0.58;
             z-index: 4; pointer-events: none;
         }
         /* Gran Cola viene sobre un lienzo blanco: la misma máscara de llenado
