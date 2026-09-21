@@ -196,6 +196,14 @@
             object-fit: fill;
             z-index: 4; pointer-events: none;
         }
+        /* Gran Cola viene sobre un lienzo blanco: la misma máscara de llenado
+           recorta el lienzo para que solo se vea el contorno de la botella. */
+        .bottle-glass-img--cola {
+            -webkit-mask: url(/gran_cola_mask.png) center / 100% 100% no-repeat;
+                    mask: url(/gran_cola_mask.png) center / 100% 100% no-repeat;
+            -webkit-mask-mode: alpha;
+                    mask-mode: alpha;
+        }
         .bottle-meniscus {
             position: absolute; left: 5%; right: 5%; height: 3px;
             border-radius: 50%; bottom: 100%; margin-bottom: -1px;
@@ -429,7 +437,7 @@
                                 </div>
                             </div>
                             <div class="bottle-glass-overlay"></div>
-                            <img class="bottle-glass-img" src="/gran cola.png" alt="Gran Cola" style="aspect-ratio:745/2112">
+                            <img class="bottle-glass-img bottle-glass-img--cola" src="/gran cola.png" alt="Gran Cola" style="aspect-ratio:745/2112">
                         </div>
                     </div>
                 </div>
